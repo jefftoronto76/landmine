@@ -40,10 +40,6 @@ function parsePage(html, url) {
   const ogImageMatch = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/)
   result.image_url = ogImageMatch ? ogImageMatch[1] : ''
 
-  // og:description
-  const ogDescMatch = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/))
-  result.description = ogDescMatch ? ogDescMatch[1].replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim() : ''
-
   // Categories from /category/ links - group by taxonomy
   const categories = {}
   const catRegex = /href="https?:\/\/[^\/]+\/category\/([^\/]+)\/[^"]*"[^>]*>([^<]+)<\/a>/g
