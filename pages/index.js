@@ -4,6 +4,8 @@ import { exportToCSV } from '../lib/export'
 
 const VISIBLE_COLUMNS = [
   { key: 'title', label: 'Title', width: '220px' },
+  { key: 'description', label: 'Description', width: '260px' },
+  { key: 'image_url', label: 'Image', width: '80px' },
   { key: 'region', label: 'Region', width: '140px' },
   { key: 'resource-topic', label: 'Topic', width: '200px' },
   { key: 'resource-type', label: 'Type', width: '140px' },
