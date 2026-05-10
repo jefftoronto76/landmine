@@ -1,2 +1,0 @@
-# landmine
-a sitemap organizer.
