@@ -393,7 +393,7 @@ export default function Home() {
         .filter-input:focus { border-color: var(--teal); }
         .filter-input::placeholder { color: var(--text-dim); }
         .result-count { font-size: 12px; color: var(--text-muted); margin-left: auto; font-family: var(--heading); font-weight: 600; }
-        .table-wrap { overflow: auto; flex: 1; }
+        .table-wrap { overflow: visible; flex: 1; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .data-table thead { position: sticky; top: 0; z-index: 10; background: var(--surface2); }
         .data-table th {
