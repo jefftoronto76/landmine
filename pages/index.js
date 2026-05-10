@@ -1,21 +1,20 @@
 import { useState, useRef, useCallback } from 'react'
 import Head from 'next/head'
-import { exportToCSV, COLUMNS } from '../lib/export'
+import { exportToCSV } from '../lib/export'
 
 const VISIBLE_COLUMNS = [
   { key: 'title', label: 'Title', width: '220px' },
   { key: 'region', label: 'Region', width: '140px' },
   { key: 'resource-topic', label: 'Topic', width: '200px' },
   { key: 'resource-type', label: 'Type', width: '140px' },
-  { key: 'language', label: 'Lang', width: '80px' },
+  { key: 'language', label: 'Language', width: '90px' },
   { key: 'review_date', label: 'Review Date', width: '110px' },
-  { key: 'outbound_link', label: 'Outbound', width: '160px' },
+  { key: 'outbound_link', label: 'Resource Link', width: '120px' },
 ]
 
 export default function Home() {
   const [sitemapUrl, setSitemapUrl] = useState('https://meant2prevent.ca/sitemap-1.xml')
-  const [status, setStatus] = useState('idle') // idle | parsing | scraping | done | error
-  const [urls, setUrls] = useState([])
+  const [status, setStatus] = useState('idle')
   const [rows, setRows] = useState([])
   const [progress, setProgress] = useState({ done: 0, total: 0, current: '' })
   const [error, setError] = useState('')
@@ -28,10 +27,8 @@ export default function Home() {
     setStatus('parsing')
     setError('')
     setRows([])
-    setUrls([])
     setProgress({ done: 0, total: 0, current: '' })
 
-    // Step 1: Parse sitemap
     try {
       const res = await fetch('/api/parse-sitemap', {
         method: 'POST',
@@ -42,11 +39,9 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || 'Failed to parse sitemap')
 
       const allUrls = data.urls
-      setUrls(allUrls)
       setProgress({ done: 0, total: allUrls.length, current: '' })
       setStatus('scraping')
 
-      // Step 2: Scrape each page sequentially
       const results = []
       for (let i = 0; i < allUrls.length; i++) {
         if (abortRef.current) break
@@ -67,7 +62,6 @@ export default function Home() {
           setRows([...results])
         }
 
-        // Small delay to be polite
         await new Promise(r => setTimeout(r, 300))
       }
 
@@ -89,40 +83,36 @@ export default function Home() {
     return Object.values(row).some(v => String(v).toLowerCase().includes(q))
   })
 
-  const currentSlug = progress.current
-    ? progress.current.replace(/https?:\/\/[^\/]+\//, '').replace(/\/$/, '')
-    : ''
+  const isRunning = status === 'parsing' || status === 'scraping'
 
   return (
     <>
       <Head>
-        <title>Landmine — Sitemap Scraper</title>
+        <title>Meant2Prevent — Resource Index</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
       <div className="app">
-        {/* Header */}
         <header className="header">
-          <div className="header-left">
-            <span className="logo">◈ LANDMINE</span>
-            <span className="tagline">sitemap intelligence</span>
-          </div>
-          {rows.length > 0 && (
-            <div className="header-right">
-              <button
-                className="btn btn-export"
-                onClick={() => exportToCSV(rows)}
-              >
-                ↓ Export CSV ({rows.length})
-              </button>
+          <div className="header-inner">
+            <div className="header-left">
+              <div className="logo-mark">M2P</div>
+              <div className="header-titles">
+                <span className="app-name">Resource Index</span>
+                <span className="app-sub">Sitemap scraper for meant2prevent.ca</span>
+              </div>
             </div>
-          )}
+            {rows.length > 0 && (
+              <button className="btn btn-export" onClick={() => exportToCSV(rows)}>
+                ↓ Export CSV ({rows.length} pages)
+              </button>
+            )}
+          </div>
         </header>
 
-        {/* Input bar */}
-        <div className="input-bar">
-          <div className="input-wrap">
-            <label className="input-label">SITEMAP URL</label>
+        <div className="main-content">
+          <div className="input-card">
+            <label className="input-label">Sitemap URL</label>
             <div className="input-row">
               <input
                 className="url-input"
@@ -130,106 +120,114 @@ export default function Home() {
                 value={sitemapUrl}
                 onChange={e => setSitemapUrl(e.target.value)}
                 placeholder="https://example.com/sitemap.xml"
-                disabled={status === 'parsing' || status === 'scraping'}
-                onKeyDown={e => e.key === 'Enter' && start()}
+                disabled={isRunning}
+                onKeyDown={e => e.key === 'Enter' && !isRunning && start()}
               />
-              {(status === 'idle' || status === 'done' || status === 'error') && (
+              {!isRunning ? (
                 <button className="btn btn-start" onClick={start}>
-                  ▶ RUN
+                  Index Pages
                 </button>
-              )}
-              {(status === 'parsing' || status === 'scraping') && (
+              ) : (
                 <button className="btn btn-stop" onClick={stop}>
-                  ■ STOP
+                  Stop
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Progress */}
-          {(status === 'parsing' || status === 'scraping' || status === 'done') && (
-            <div className="progress-wrap">
-              <div className="progress-meta">
-                {status === 'parsing' && <span className="blink">Parsing sitemap...</span>}
-                {status === 'scraping' && (
-                  <>
-                    <span className="progress-count">{progress.done} / {progress.total}</span>
-                    <span className="progress-pct">{pct}%</span>
-                    {currentSlug && <span className="progress-slug">↳ {currentSlug}</span>}
-                  </>
-                )}
-                {status === 'done' && (
-                  <span className="done-msg">✓ Complete — {rows.length} pages indexed</span>
+            {(isRunning || status === 'done') && (
+              <div className="progress-section">
+                <div className="progress-bar-track">
+                  <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="progress-info">
+                  {status === 'parsing' && <span className="status-text parsing">Parsing sitemap…</span>}
+                  {status === 'scraping' && (
+                    <>
+                      <span className="status-text scraping">{progress.done} of {progress.total} pages indexed</span>
+                      <span className="pct-badge">{pct}%</span>
+                    </>
+                  )}
+                  {status === 'done' && (
+                    <span className="status-text done">✓ Done — {rows.length} pages indexed</span>
+                  )}
+                </div>
+                {status === 'scraping' && progress.current && (
+                  <div className="current-url">
+                    {progress.current.replace(/https?:\/\/[^\/]+\//, '').replace(/\/$/, '')}
+                  </div>
                 )}
               </div>
-              <div className="progress-bar-track">
-                <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+            )}
+
+            {error && <div className="error-msg">⚠ {error}</div>}
+          </div>
+
+          {rows.length > 0 && (
+            <div className="results-card">
+              <div className="results-toolbar">
+                <input
+                  className="filter-input"
+                  type="text"
+                  placeholder="🔍  Filter results…"
+                  value={filter}
+                  onChange={e => setFilter(e.target.value)}
+                />
+                <span className="result-count">{filteredRows.length} results</span>
+              </div>
+
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th className="th-num">#</th>
+                      {VISIBLE_COLUMNS.map(col => (
+                        <th key={col.key} style={{ minWidth: col.width }}>{col.label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((row, i) => (
+                      <tr key={row.url} className={row.error ? 'row-error' : ''}>
+                        <td className="cell-num">{i + 1}</td>
+                        {VISIBLE_COLUMNS.map(col => (
+                          <td key={col.key}>
+                            {col.key === 'title' ? (
+                              <a href={row.url} target="_blank" rel="noopener noreferrer" className="title-link">
+                                {row.title || <span className="empty">—</span>}
+                              </a>
+                            ) : col.key === 'outbound_link' ? (
+                              row.outbound_link
+                                ? <a href={row.outbound_link} target="_blank" rel="noopener noreferrer" className="view-link">View ↗</a>
+                                : <span className="empty">—</span>
+                            ) : col.key === 'resource-topic' ? (
+                              row['resource-topic']
+                                ? <div className="tag-list">{row['resource-topic'].split(' | ').map(t => <span key={t} className="tag">{t}</span>)}</div>
+                                : <span className="empty">—</span>
+                            ) : col.key === 'resource-type' ? (
+                              row['resource-type']
+                                ? <span className="type-badge">{row['resource-type'].split(' | ')[0]}</span>
+                                : <span className="empty">—</span>
+                            ) : (
+                              row[col.key] || <span className="empty">—</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
-          {error && <div className="error-msg">✗ {error}</div>}
+          {status === 'idle' && (
+            <div className="empty-state">
+              <div className="empty-icon">📋</div>
+              <h3>Ready to index</h3>
+              <p>Enter a sitemap URL above and click <strong>Index Pages</strong> to begin.<br />Results will appear here in real time as each page is processed.</p>
+            </div>
+          )}
         </div>
-
-        {/* Filter + table */}
-        {rows.length > 0 && (
-          <div className="table-section">
-            <div className="table-toolbar">
-              <input
-                className="filter-input"
-                type="text"
-                placeholder="Filter results..."
-                value={filter}
-                onChange={e => setFilter(e.target.value)}
-              />
-              <span className="row-count">{filteredRows.length} rows</span>
-            </div>
-
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '30px' }}>#</th>
-                    {VISIBLE_COLUMNS.map(col => (
-                      <th key={col.key} style={{ width: col.width }}>{col.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRows.map((row, i) => (
-                    <tr key={row.url} className={row.error ? 'row-error' : ''}>
-                      <td className="cell-num">{i + 1}</td>
-                      {VISIBLE_COLUMNS.map(col => (
-                        <td key={col.key} className={`cell-${col.key}`}>
-                          {col.key === 'title' ? (
-                            <a href={row.url} target="_blank" rel="noopener noreferrer" className="title-link">
-                              {row.title || <span className="empty">—</span>}
-                            </a>
-                          ) : col.key === 'outbound_link' ? (
-                            row.outbound_link
-                              ? <a href={row.outbound_link} target="_blank" rel="noopener noreferrer" className="outbound-link">↗ view</a>
-                              : <span className="empty">—</span>
-                          ) : (
-                            row[col.key] || <span className="empty">—</span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {status === 'idle' && (
-          <div className="empty-state">
-            <div className="empty-icon">◈</div>
-            <p>Enter a sitemap URL and press RUN to begin indexing.</p>
-            <p className="empty-sub">Results populate in real time as each page is scraped.</p>
-          </div>
-        )}
       </div>
 
       <style jsx>{`
@@ -239,260 +237,199 @@ export default function Home() {
           flex-direction: column;
           background: var(--bg);
         }
-
-        /* Header */
         .header {
+          background: var(--teal);
+          box-shadow: 0 2px 8px rgba(42,172,226,0.3);
+        }
+        .header-inner {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 0 24px;
+          height: 60px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 24px;
-          border-bottom: 1px solid var(--border);
-          background: var(--surface);
         }
-        .header-left { display: flex; align-items: baseline; gap: 12px; }
-        .logo {
-          font-family: var(--mono);
-          font-size: 15px;
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .logo-mark {
+          background: white;
+          color: var(--teal);
+          font-family: var(--heading);
+          font-weight: 800;
+          font-size: 13px;
+          padding: 4px 8px;
+          border-radius: 6px;
+          letter-spacing: 0.05em;
+        }
+        .header-titles { display: flex; flex-direction: column; }
+        .app-name {
+          font-family: var(--heading);
           font-weight: 700;
-          color: var(--accent);
-          letter-spacing: 0.1em;
+          font-size: 16px;
+          color: white;
+          line-height: 1.2;
         }
-        .tagline {
-          font-family: var(--mono);
-          font-size: 10px;
-          color: var(--text-muted);
-          letter-spacing: 0.15em;
-          text-transform: uppercase;
-        }
-
-        /* Buttons */
+        .app-sub { font-size: 11px; color: rgba(255,255,255,0.75); }
         .btn {
-          font-family: var(--mono);
-          font-size: 12px;
+          font-family: var(--heading);
           font-weight: 700;
-          letter-spacing: 0.08em;
+          font-size: 13px;
           border: none;
           cursor: pointer;
-          padding: 9px 18px;
+          border-radius: 8px;
+          padding: 10px 20px;
           transition: all 0.15s;
+          white-space: nowrap;
         }
-        .btn-start {
-          background: var(--accent);
-          color: #000;
-          flex-shrink: 0;
-        }
-        .btn-start:hover { background: #fff; }
-        .btn-stop {
-          background: transparent;
-          color: var(--danger);
-          border: 1px solid var(--danger);
-          flex-shrink: 0;
-        }
-        .btn-stop:hover { background: var(--danger); color: #000; }
-        .btn-export {
-          background: transparent;
-          color: var(--accent);
-          border: 1px solid var(--accent);
-          padding: 7px 14px;
-        }
-        .btn-export:hover { background: var(--accent); color: #000; }
-
-        /* Input bar */
-        .input-bar {
-          padding: 20px 24px;
-          background: var(--surface);
-          border-bottom: 1px solid var(--border);
+        .btn-start { background: var(--teal); color: white; flex-shrink: 0; }
+        .btn-start:hover { background: var(--teal-dark); }
+        .btn-stop { background: white; color: var(--danger); border: 1.5px solid var(--danger); flex-shrink: 0; }
+        .btn-stop:hover { background: var(--danger); color: white; }
+        .btn-export { background: white; color: var(--teal); font-size: 13px; padding: 8px 16px; }
+        .btn-export:hover { background: var(--teal-light); }
+        .main-content {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 24px;
+          width: 100%;
+          flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 20px;
         }
-        .input-wrap { display: flex; flex-direction: column; gap: 6px; }
+        .input-card {
+          background: var(--surface);
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          border: 1px solid var(--border);
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
         .input-label {
-          font-family: var(--mono);
-          font-size: 10px;
-          letter-spacing: 0.15em;
-          color: var(--text-muted);
+          font-family: var(--heading);
+          font-weight: 700;
+          font-size: 13px;
+          color: var(--text);
         }
-        .input-row { display: flex; gap: 8px; }
+        .input-row { display: flex; gap: 10px; }
         .url-input {
           flex: 1;
           background: var(--bg);
-          border: 1px solid var(--border-bright);
+          border: 1.5px solid var(--border);
           color: var(--text);
-          font-family: var(--mono);
-          font-size: 13px;
-          padding: 9px 12px;
+          font-family: var(--sans);
+          font-size: 14px;
+          padding: 10px 14px;
+          border-radius: 8px;
           outline: none;
           transition: border-color 0.15s;
         }
-        .url-input:focus { border-color: var(--accent); }
-        .url-input:disabled { opacity: 0.5; }
-        .url-input::placeholder { color: var(--text-muted); }
-
-        /* Progress */
-        .progress-wrap { display: flex; flex-direction: column; gap: 6px; }
-        .progress-meta {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          font-family: var(--mono);
+        .url-input:focus { border-color: var(--teal); }
+        .url-input:disabled { opacity: 0.6; }
+        .url-input::placeholder { color: var(--text-dim); }
+        .progress-section { display: flex; flex-direction: column; gap: 8px; }
+        .progress-bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: var(--teal); border-radius: 3px; transition: width 0.3s ease; }
+        .progress-info { display: flex; align-items: center; gap: 10px; }
+        .status-text { font-size: 13px; font-family: var(--heading); font-weight: 600; }
+        .status-text.parsing { color: var(--text-muted); }
+        .status-text.scraping { color: var(--teal-dark); }
+        .status-text.done { color: var(--success); }
+        .pct-badge {
+          background: var(--teal-light);
+          color: var(--teal-dark);
           font-size: 11px;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 20px;
+          font-family: var(--heading);
         }
-        .progress-count { color: var(--accent); font-weight: 700; }
-        .progress-pct { color: var(--text-muted); }
-        .progress-slug {
-          color: var(--text-dim);
+        .current-url { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .error-msg { font-size: 13px; color: var(--danger); background: #fef2f2; border: 1px solid #fecaca; padding: 10px 14px; border-radius: 8px; }
+        .results-card {
+          background: var(--surface);
+          border-radius: 12px;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          border: 1px solid var(--border);
           overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          max-width: 400px;
-        }
-        .done-msg { color: var(--success); font-weight: 700; }
-        .progress-bar-track {
-          height: 2px;
-          background: var(--border);
-          width: 100%;
-        }
-        .progress-bar-fill {
-          height: 100%;
-          background: var(--accent);
-          transition: width 0.3s ease;
-        }
-
-        .error-msg {
-          font-family: var(--mono);
-          font-size: 12px;
-          color: var(--danger);
-          padding: 8px 12px;
-          border: 1px solid var(--danger);
-          background: rgba(255, 68, 68, 0.05);
-        }
-
-        /* Table section */
-        .table-section {
           flex: 1;
           display: flex;
           flex-direction: column;
-          overflow: hidden;
         }
-        .table-toolbar {
+        .results-toolbar {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 12px 24px;
+          padding: 14px 20px;
           border-bottom: 1px solid var(--border);
           background: var(--surface2);
         }
         .filter-input {
-          background: var(--bg);
-          border: 1px solid var(--border-bright);
+          background: white;
+          border: 1.5px solid var(--border);
           color: var(--text);
           font-family: var(--sans);
           font-size: 13px;
-          padding: 6px 10px;
+          padding: 7px 12px;
+          border-radius: 8px;
           outline: none;
           width: 280px;
         }
-        .filter-input:focus { border-color: var(--accent); }
-        .filter-input::placeholder { color: var(--text-muted); }
-        .row-count {
-          font-family: var(--mono);
-          font-size: 11px;
-          color: var(--text-muted);
-          margin-left: auto;
-        }
-
-        .table-wrap {
-          flex: 1;
-          overflow: auto;
-        }
-        .data-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 12px;
-        }
-        .data-table thead {
-          position: sticky;
-          top: 0;
-          z-index: 10;
-          background: var(--surface2);
-        }
+        .filter-input:focus { border-color: var(--teal); }
+        .filter-input::placeholder { color: var(--text-dim); }
+        .result-count { font-size: 12px; color: var(--text-muted); margin-left: auto; font-family: var(--heading); font-weight: 600; }
+        .table-wrap { overflow: auto; flex: 1; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table thead { position: sticky; top: 0; z-index: 10; background: var(--surface2); }
         .data-table th {
-          font-family: var(--mono);
-          font-size: 10px;
-          letter-spacing: 0.1em;
+          font-family: var(--heading);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
           color: var(--text-muted);
           text-align: left;
-          padding: 10px 12px;
-          border-bottom: 1px solid var(--border-bright);
+          padding: 10px 14px;
+          border-bottom: 2px solid var(--border);
           white-space: nowrap;
-          user-select: none;
         }
+        .th-num { width: 40px; }
         .data-table td {
-          padding: 8px 12px;
+          padding: 10px 14px;
           border-bottom: 1px solid var(--border);
-          vertical-align: top;
+          vertical-align: middle;
           max-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        .data-table tr:hover td { background: var(--surface2); }
+        .data-table tr:hover td { background: var(--teal-light); }
         .row-error td { opacity: 0.4; }
-
-        .cell-num {
-          font-family: var(--mono);
-          font-size: 10px;
-          color: var(--text-muted);
-          text-align: right;
-        }
-        .title-link {
-          color: var(--text);
-          font-weight: 500;
-        }
-        .title-link:hover { color: var(--accent); }
-        .outbound-link {
-          color: var(--accent);
-          font-family: var(--mono);
-          font-size: 10px;
-          letter-spacing: 0.05em;
-        }
-        .outbound-link:hover { text-decoration: underline; }
-        .empty { color: var(--text-muted); }
-
-        /* Empty state */
+        .cell-num { font-size: 11px; color: var(--text-dim); text-align: right; font-family: var(--heading); }
+        .title-link { color: var(--text); font-weight: 600; }
+        .title-link:hover { color: var(--teal); }
+        .view-link { color: var(--teal); font-weight: 600; font-size: 12px; }
+        .view-link:hover { text-decoration: underline; }
+        .empty { color: var(--text-dim); }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 4px; white-space: normal; }
+        .tag { background: var(--teal-light); color: var(--teal-dark); font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+        .type-badge { background: var(--coral-light); color: var(--coral); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
         .empty-state {
-          flex: 1;
+          background: var(--surface);
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          padding: 60px 24px;
+          text-align: center;
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
           gap: 12px;
-          color: var(--text-muted);
-          padding: 60px 24px;
         }
-        .empty-icon {
-          font-size: 48px;
-          color: var(--border-bright);
-          line-height: 1;
-        }
-        .empty-state p {
-          font-family: var(--mono);
-          font-size: 13px;
-          text-align: center;
-        }
-        .empty-sub { font-size: 11px; color: var(--border-bright); }
-
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-        .blink {
-          animation: blink 1.2s ease-in-out infinite;
-          font-family: var(--mono);
-          font-size: 11px;
-          color: var(--accent);
-        }
+        .empty-icon { font-size: 40px; }
+        .empty-state h3 { font-family: var(--heading); font-weight: 700; font-size: 18px; color: var(--text); }
+        .empty-state p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
       `}</style>
     </>
   )
