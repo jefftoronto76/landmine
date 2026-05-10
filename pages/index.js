@@ -214,7 +214,7 @@ export default function Home() {
                     ? <a href={row.image_url} target="_blank" rel="noopener noreferrer"><img src={row.image_url} style={{width:'40px',height:'40px',objectFit:'cover',borderRadius:'4px'}} /></a>
                     : <span className="empty">—</span>
                 ) : (
-                  row[col.key] || <span className="empty">—</span>
+                  <span title={row[col.key]}>{row[col.key] || <span className="empty">—</span>}</span>
                 )}
                           </td>
                         ))}
