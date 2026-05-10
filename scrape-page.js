@@ -32,11 +32,11 @@ export default async function handler(req, res) {
 function parsePage(html, url) {
   const result = { url }
 
-  // Title - h1 tag
+  // Title
   const titleMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)
   result.title = titleMatch ? stripTags(titleMatch[1]).trim() : ''
 
-  // og:image for thumbnail
+  // og:image
   const ogImageMatch = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/)
   result.image_url = ogImageMatch ? ogImageMatch[1] : ''
 
@@ -44,7 +44,7 @@ function parsePage(html, url) {
   const ogDescMatch = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/)
   result.description = ogDescMatch ? ogDescMatch[1].replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim() : ''
 
-  // Categories from /category/ links - group by taxonomy
+  // Categories from /category/ links
   const categories = {}
   const catRegex = /href="https?:\/\/[^\/]+\/category\/([^\/]+)\/[^"]*"[^>]*>([^<]+)<\/a>/g
   let m
@@ -56,7 +56,6 @@ function parsePage(html, url) {
       categories[taxonomy].push(value)
     }
   }
-  // Flatten taxonomy groups into separate fields
   result.region = (categories['region'] || []).join(' | ')
   result['resource-topic'] = (categories['resource-topic'] || []).join(' | ')
   result['resource-type'] = (categories['resource-type'] || []).join(' | ')
@@ -81,7 +80,7 @@ function parsePage(html, url) {
     result[key] = match ? match[1].trim().replace(/\s+/g, ' ') : ''
   }
 
-  // Outbound link — the main "View Resource" / "Download" button
+  // Outbound link
   const outboundMatch = html.match(
     /href="(https?:\/\/(?!meant2prevent\.ca)[^"]+)"[^>]*>\s*(?:View Resource|Register Here|Download Program|Download|View resource|Learn More|Click Here|View Toolkit)[^<]*<\/a>/i
   )
