@@ -209,9 +209,13 @@ export default function Home() {
                               row['resource-type']
                                 ? <span className="type-badge">{row['resource-type'].split(' | ')[0]}</span>
                                 : <span className="empty">—</span>
-                            ) : (
-                              row[col.key] || <span className="empty">—</span>
-                            )}
+                           ) : col.key === 'image_url' ? (
+                  row.image_url
+                    ? <a href={row.image_url} target="_blank" rel="noopener noreferrer"><img src={row.image_url} style={{width:'40px',height:'40px',objectFit:'cover',borderRadius:'4px'}} /></a>
+                    : <span className="empty">—</span>
+                ) : (
+                  row[col.key] || <span className="empty">—</span>
+                )}
                           </td>
                         ))}
                       </tr>
