@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Nunito+Sans:wght@300;400;600&display=swap');
+
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -22,8 +22,8 @@
   --text-dim: #aab5be;
   --danger: #e74c3c;
   --success: #27ae60;
-  --sans: 'Nunito Sans', sans-serif;
-  --heading: 'Nunito', sans-serif;
+ --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --heading: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 html, body {
