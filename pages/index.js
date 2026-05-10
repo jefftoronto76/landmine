@@ -192,7 +192,7 @@ export default function Home() {
                       <tr key={row.url} className={row.error ? 'row-error' : ''}>
                         <td className="cell-num">{i + 1}</td>
                         {VISIBLE_COLUMNS.map(col => (
-                          <td key={col.key}>
+                         <td key={col.key} style={{position:'relative'}}>
                             {col.key === 'title' ? (
                               <a href={row.url} target="_blank" rel="noopener noreferrer" className="title-link">
                                 {row.title || <span className="empty">—</span>}
@@ -214,7 +214,14 @@ export default function Home() {
                     ? <a href={row.image_url} target="_blank" rel="noopener noreferrer"><img src={row.image_url} style={{width:'40px',height:'40px',objectFit:'cover',borderRadius:'4px'}} /></a>
                     : <span className="empty">—</span>
                 ) : (
-                  <span title={row[col.key]}>{row[col.key] || <span className="empty">—</span>}</span>
+                  col.key === 'description' ? (
+                    <div className="desc-cell">
+                        <span className="desc-preview">{row.description || <span className="empty">—</span>}</span>
+                        {row.description && <div className="desc-tooltip">{row.description}</div>}
+                    </div>
+                ) : (
+                  row[col.key] || <span className="empty">—</span>
+                  )
                 )}
                           </td>
                         ))}
@@ -436,6 +443,30 @@ export default function Home() {
         .empty-icon { font-size: 40px; }
         .empty-state h3 { font-family: var(--heading); font-weight: 700; font-size: 18px; color: var(--text); }
         .empty-state p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+        .desc-cell { position: relative; }
+        .desc-cell:hover .desc-tooltip { display: block; }
+        .desc-tooltip {
+          display: none;
+          position: absolute;
+          top: 100%;
+          left: 0;
+          z-index: 100;
+          background: #1a1a2e;
+          color: #f0f0f0;
+          font-size: 13px;
+          line-height: 1.6;
+          padding: 12px 16px;
+          border-radius: 8px;
+          width: 360px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+          white-space: normal;
+        }
+        .desc-preview {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          display: block;
+        }
       `}</style>
     </>
   )
